@@ -3,9 +3,11 @@ Resource: Brevets
 """
 from flask import Response, request
 from flask_restful import Resource
+from datetime import datetime
+from json import dumps
 
 # You need to implement this in database/models.py
-from database.models import Brevet
+from database.models import *
 
 # MongoEngine queries:
 # Brevet.objects() : similar to find_all. Returns a MongoEngine query
@@ -27,3 +29,22 @@ from database.models import Brevet
 # it from a MongoEngine query object to a JSON and send back the JSON
 # directly instead of letting Flask-RESTful attempt to convert it to a
 # JSON for you.
+
+class Brevets_Resource(Resource):
+    def post(self):
+        vals = list(dict(request.form).values())
+        new_brev = Brevet(
+            length=3.14,
+            start_time=datetime.now(),
+            checkpoints=[
+                Checkpoint(
+                    distance=3.14,
+                    open_time=datetime.now(),
+                    close_time=datetime.now()
+                )
+            ]
+        )
+        new_brev.save()
+        return Response(dumps({"Message": f"Object w/ oid {str(new_brev.id)} successfully created!"}), status=201)
+    def get(self):
+        return Response(Brevet.objects.to_json(), mimetype="application/json", status=200)
