@@ -35,6 +35,6 @@ class Brevet_Resource(Resource):
                     )
                 ]
             )
-            return Response(dumps({"Message": f"Object w/ oid {str(id)} successfully updated!"}))
+            return Response(dumps({"Message": f"Object w/ oid {str(id)} successfully updated!"}), status=200)
         except:
             return Response(dumps({"Message": f"Object w/ oid {str(id)} not found in database!"}), status=404)
