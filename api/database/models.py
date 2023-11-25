@@ -1,6 +1,6 @@
 from mongoengine import *
 
-
+# Checkpoint schema
 class Checkpoint(EmbeddedDocument):
     """
     A MongoEngine EmbeddedDocument containing:
@@ -14,6 +14,7 @@ class Checkpoint(EmbeddedDocument):
     open_time = DateTimeField(required = True)
     close_time = DateTimeField(required = True)
 
+# Brevet schema
 class Brevet(Document):
     """
     A MongoEngine document containing:

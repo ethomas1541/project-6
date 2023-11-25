@@ -24,4 +24,4 @@ api.add_resource(Brevets_Resource, '/api/brevets')
 if __name__ == "__main__":
     # Run flask app normally
     # Read DEBUG and PORT from environment variables.
-    app.run(port=os.environ["PORT"], host="0.0.0.0")
+    app.run(debug=os.environ["DEBUG"], port=os.environ["PORT"], host="0.0.0.0")

@@ -122,6 +122,7 @@
          <script type="text/javascript">
             var SCRIPT_ROOT = {{ request.script_root|tojson|safe }} ;
             var TIME_CALC_URL = SCRIPT_ROOT + "/_calc_times";
+            var populated = false;
 
             // Admittedly, this part is very repetitive. I simply COULD NOT find a reliable way to index into
             // a control row's child elements. JavaScript seems to really like throwing errors.
@@ -152,6 +153,11 @@
                   // Will contain all form data to send to server
                   var post_obj = {};
 
+                  // Small serialization change as opposed to proj. 5
+
+                  post_obj["brevdist"] = $('#brevet_dist_km').val();
+                  post_obj["start_date"] = $('#begin_date').val();
+
                   // Populate this (massive) dictionary-like object with ALL form data, even empty fields.
                   for(let i = 0; i < miles.length; i++){
                      var is = i.toString()
@@ -162,13 +168,13 @@
                      post_obj["closet" + is] = $(closes[i]).val();
                   }
 
-                  post_obj["brevdist"] = $('#brevet_dist_km').val();
-                  post_obj["start_date"] = $('#begin_date').val();
-
                   // HTTP POST it to the server
-                  $.post(SCRIPT_ROOT + "/_submit_times", post_obj).done(
+                  $.post(SCRIPT_ROOT + '/_submit', JSON.stringify(post_obj)).always(
                      function(){
-
+                     
+                        // Not interfacing directly with DB this time, so instead we should self-monitor
+                        // whether there's data up for retrieval yet.
+                        populated = true;
                         // Clear the form. Since the data's already been sent, this is mostly superficial.
                         for(let i = 0; i < miles.length; i++){
                            $(miles[i]).val("");
@@ -208,7 +214,7 @@
 
                      // Smaller field in the JSON can determine if anything's even been submitted yet.
                      // Submitting an empty form DOES count as data that will be stored in the database.
-                     if(data.empty.empty){
+                     if(!populated){
                         $("#db_status").text("Nothing to retrieve! Submit something first!");
                         $("#db_status").css("color", "red");
 
@@ -216,23 +222,37 @@
                      // The logic in the server dictates that data.result only exists if
                      // something coherent could be retrieved from the database
                      }else{
-                        // JQuery builtin can parse JSON object from the massive string we've just received:
-                        var response_json = JSON.parse(data.result)
+                        // Doesn't need to be parsed! It's already a JSON!
+                        var last_brevet = data[data.length-1]
 
                         // Overwrite any ephemeral form data with the database data
+
+                        $('#brevet_dist_km').val(last_brevet.length);
+                        $('#begin_date').val(last_brevet.start_time); 
+                        
                         for(let i = 0; i < 20; i++){
-                           var response_i = response_json[i]
-                           $(miles[i]).val(response_i.miles);
-                           $(kms[i]).val(response_i.kilometers);
-                           $(locations[i]).val(response_i.location);
-                           $(opens[i]).val(response_i.open);
-                           $(closes[i]).val(response_i.close);
-                        }
+                           var checkpoint_i = last_brevet.checkpoints[i]
+                           // %NULL% is a status code stating that the data we're referencing is a mere placeholder.
+                           // All fields in the MongoEngine schemata are required fields, meaning we can fill them
+                           // with bogus data but shouldn't leave them empty. However, the frontend fields should
+                           // be left empty if the user didn't submit any brevet data into them. That's where
+                           // we have to politely lie to the user about what's in the database.
 
-                        $('#brevet_dist_km').val(response_json[20].brev_length);
-                        $('#begin_date').val(response_json[20].start_date);                        
-
-                        // $("#db_status").text(response_json[0].miles)
+                           // After all, who'd bike to %NULL% and back?
+                           if(checkpoint_i.location == "%NULL%"){
+                              $(miles[i]).val("");
+                              $(kms[i]).val("");
+                              $(locations[i]).val("");
+                              $(opens[i]).val("");
+                              $(closes[i]).val("");
+                           }else{
+                              $(miles[i]).val((0.621371 * parseFloat(checkpoint_i.distance)).toFixed(6));
+                              $(kms[i]).val(checkpoint_i.distance);
+                              $(locations[i]).val(checkpoint_i.location);
+                              $(opens[i]).val(checkpoint_i.open_time);
+                              $(closes[i]).val(checkpoint_i.close_time);
+                           }
+                        }     
 
                         // Status code
                         $("#db_status").text("Displaying:");
